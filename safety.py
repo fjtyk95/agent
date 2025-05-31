@@ -2,9 +2,7 @@ import pandas as pd
 
 __all__ = ["calc_safety"]
 
-
 def calc_safety(df_cash: pd.DataFrame, horizon_days: int = 30, quantile: float = 0.95) -> pd.Series:
-    """Return required safety stock per bank using rolling net outflow quantiles."""
     required_cols = {"date", "bank_id", "amount", "direction"}
     if not required_cols.issubset(df_cash.columns):
         missing = required_cols - set(df_cash.columns)
