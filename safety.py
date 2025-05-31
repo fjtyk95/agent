@@ -2,7 +2,11 @@ import pandas as pd
 
 __all__ = ["calc_safety"]
 
-def calc_safety(df_cash: pd.DataFrame, horizon_days: int = 30, quantile: float = 0.95) -> pd.Series:
+def calc_safety(
+    df_cash: pd.DataFrame,
+    horizon_days: int = 30,
+    quantile: float = 0.95
+) -> pd.Series:
     """Return required safety stock per bank.
 
     Parameters
@@ -26,7 +30,6 @@ def calc_safety(df_cash: pd.DataFrame, horizon_days: int = 30, quantile: float =
     direction_map = {"out": 1, "in": -1}
     if not set(df["direction"]).issubset(direction_map.keys()):
         raise ValueError("direction column must contain only 'in' or 'out'")
-
     df["net"] = df["amount"] * df["direction"].map(direction_map)
 
     window = f"{horizon_days}D"
@@ -37,10 +40,8 @@ def calc_safety(df_cash: pd.DataFrame, horizon_days: int = 30, quantile: float =
         .sum()
         .reset_index()
     )
-
     quant = rolling.groupby("bank_id")["net"].quantile(quantile)
 
     # Safety stock cannot be negative
     quant = quant.clip(lower=0)
-
     return quant.round().astype(int)
