@@ -1,9 +1,10 @@
-# agent
+# Agent Repository
 
-This repository defines CSV schemas using Python dataclasses and provides utilities.
+This repository defines CSV schemas using Python dataclasses and provides utilities for loading data, calculating required safety stock, and generating charts.
 
 ## Modules
 
-- `schemas.py` -- dataclass definitions for the CSV files.
-- `charts.py` -- contains `plot_cost_comparison` that creates a stacked bar chart comparing baseline and optimised cost and saves it to `/output/cost_comparison.png`.
-
+- **schemas.py**: Dataclass definitions for each CSV file.
+- **data_load.py**: Functions to load CSV files with strict dtype enforcement and column validation.
+- **safety.py**: Implements `calc_safety` to compute safety stock levels based on rolling net outflows.
+- **charts.py**: Contains `plot_cost_comparison` to create a stacked bar chart comparing baseline and optimised costs, saved as `/output/cost_comparison.png`.
