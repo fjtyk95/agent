@@ -1,5 +1,6 @@
 import pulp
-from typing import Iterable, Dict, Tuple, Callable
+from typing import Iterable, Dict, Tuple
+from datetime import datetime
 
 
 def build_model(
@@ -10,7 +11,9 @@ def build_model(
     initial_balance: Dict[str, int],
     safety: Dict[str, int],
     fee_lookup: Dict[Tuple[str, str, str], int],
+    cut_off: Dict[Tuple[str, str], str] | None = None,
     lambda_penalty: float = 1.0,
+    planning_time: str = "15:00",
 ) -> Dict[str, Dict[Tuple[str, str, str, str], float]]:
     """Build and solve transfer optimisation model.
 
@@ -30,8 +33,13 @@ def build_model(
         Required minimum balance per bank.
     fee_lookup : Dict[Tuple[str, str, str], int]
         Mapping of (from_bank, to_bank, service) to unit fee.
+    cut_off : Dict[Tuple[str, str], str], optional
+        Mapping of (bank_id, service_id) to HH:MM cut-off time.
+        Transfers scheduled after ``planning_time`` settle on the next day.
     lambda_penalty : float, default 1.0
         Weight for safety shortfall penalty.
+    planning_time : str, default "15:00"
+        Time of day when planning decisions are assumed to occur.
 
     Returns
     -------
@@ -41,6 +49,28 @@ def build_model(
     banks = list(banks)
     days = list(days)
     services = list(services)
+
+    cut_off = cut_off or {}
+    plan_time = datetime.strptime(planning_time, "%H:%M").time()
+    allow_same_day: Dict[Tuple[str, str], bool] = {}
+    for b in banks:
+        for s in services:
+            t_str = cut_off.get((b, s))
+            if t_str is None:
+                allow_same_day[(b, s)] = True
+            else:
+                allow_same_day[(b, s)] = datetime.strptime(t_str, "%H:%M").time() >= plan_time
+
+    # Map each (from_bank, service, day) to the day when funds settle
+    effect_day: Dict[Tuple[str, str, str], str] = {}
+    for b in banks:
+        for s in services:
+            for idx, d in enumerate(days):
+                if allow_same_day[(b, s)]:
+                    effect_day[(b, s, d)] = d
+                else:
+                    effect_idx = min(idx + 1, len(days) - 1)
+                    effect_day[(b, s, d)] = days[effect_idx]
 
     prob = pulp.LpProblem("fund_transfers", pulp.LpMinimize)
 
@@ -64,8 +94,20 @@ def build_model(
 
     for i in banks:
         for idx, d in enumerate(days):
-            incoming = pulp.lpSum(x[j][i][s][d] for j in banks for s in services)
-            outgoing = pulp.lpSum(x[i][j][s][d] for j in banks for s in services)
+            incoming = pulp.lpSum(
+                x[j][i][s][dp]
+                for j in banks
+                for s in services
+                for dp in days
+                if effect_day[(j, s, dp)] == d
+            )
+            outgoing = pulp.lpSum(
+                x[i][j][s][dp]
+                for j in banks
+                for s in services
+                for dp in days
+                if effect_day[(i, s, dp)] == d
+            )
             net = net_cash.get((i, d), 0)
             if idx == 0:
                 prev = initial_balance.get(i, 0)
