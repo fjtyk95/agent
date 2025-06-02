@@ -1,58 +1,15 @@
 # Agent Repository
 
-This repository offers a toolkit for optimising interbank transfers. It contains dataclasses defining each CSV schema, functions for loading data with pandas, utilities to calculate safety stock, an optimisation model built with pulp, and exporters for charts and CSV results.
-
-
-## Setup
-
-The recommended way to install dependencies is via [Poetry](https://python-poetry.org/):
-
-```bash
-poetry install
-
-This will create a virtual environment and install all required packages.
-
-## Day-to-day usage
-
-1. **Prepare CSV files** using the schema definitions in `schemas.py`.
-2. **Load data** with the loader functions in `data_load.py`:
-   ```python
-   from data_load import load_bank_master, load_fee_table, load_balance, load_cashflow
-   df_master = load_bank_master("bank_master.csv")
-   df_fees = load_fee_table("fee_table.csv")
-   df_balance = load_balance("balance_snapshot.csv")
-   df_flow = load_cashflow("cashflow_history.csv")
-   ```
-3. **Calculate safety stock** from historical cash flows:
-   ```python
-   from safety import calc_safety
-   safety = calc_safety(df_flow)
-   ```
-4. **Optimise transfers** with the MILP model:
-   ```python
-   from optimise import build_model
-   model = build_model(df_master, df_fees, df_balance, safety, lam=1.0)
-   model.solve()
-   ```
-5. **Export plans and charts**:
-   ```python
-   from export import to_csv
-   to_csv(plan, "transfer_plan.csv")
-   from charts import plot_cost_comparison
-   plot_cost_comparison(baseline, optimised)
-   ```
-
-Run tests with:
-
-```bash
-poetry run pytest
-```
-
-=======
+This project provides helper utilities for handling bank transaction CSV files. It defines CSV schemas using Python dataclasses and provides utilities for loading data, calculating required safety stock, and generating charts.
 This project provides a small toolkit for optimising interbank transfers. It focuses on loading transaction data from CSV files, estimating the cash safety stock required at each bank, and building a linear program to minimise transfer fees. Charts and export helpers round out the workflow so that the resulting plan can be visualised or written back to disk.
 
 ## Modules
 
+- `schemas.py` — dataclass definitions for each CSV file.
+- `data_load.py` — functions to load CSV files with strict dtype enforcement and column validation.
+- `safety.py` — `calc_safety` computes safety stock levels based on rolling net outflows.
+- `charts.py` — `plot_cost_comparison` creates a stacked bar chart comparing baseline and optimised costs, saved to `/output/cost_comparison.png`.
+- `interactive_notebook.ipynb` — Jupyter notebook with sliders to run an optimisation example.
 - `schemas.py` — dataclass definitions describing each CSV schema.
 - `data_load.py` — utility functions to load CSV files with strict dtype enforcement and column validation.
 - `fee.py` — `FeeCalculator` for looking up transaction fees from the fee table.
@@ -60,6 +17,7 @@ This project provides a small toolkit for optimising interbank transfers. It foc
 - `optimise.py` — builds and solves the optimisation model using `pulp`.
 - `export.py` — writes transfer plans to CSV.
 - `charts.py` — `plot_cost_comparison` saves a simple comparison bar chart.
+- `kpi_logger.py` — persists optimisation KPI metrics to `logs/kpi.jsonl`.
 - `interactive_notebook.ipynb` — Jupyter notebook illustrating an optimisation run.
 
 ## Dataclass schema
@@ -94,3 +52,80 @@ The functions in `data_load.py` such as `load_bank_master` and `load_cashflow` e
 ### Optimisation model
 
 `optimise.py` builds a linear program to plan transfers while minimising fees and penalties for violating safety stock. The solved transfers and balances can then be exported and visualised.
+
+### KPI logging
+
+Use `kpi_logger.append_kpi` to save run metrics such as fees and runtime to `logs/kpi.jsonl`. Recent history can be loaded with `kpi_logger.load_recent()`.
+
+```python
+from datetime import datetime
+from kpi_logger import KPIRecord, append_kpi
+
+append_kpi(
+    KPIRecord(
+        timestamp=datetime.now(),
+        total_fee=1000,
+        total_shortfall=0,
+        runtime_sec=2.3,
+    )
+)
+```
+kpi_logger.py
+新規
++54
+-0
+
+from __future__ import annotations
+
+from dataclasses import dataclass, asdict
+from datetime import datetime, timedelta
+from pathlib import Path
+import json
+from typing import List
+
+__all__ = ["KPIRecord", "append_kpi", "load_recent"]
+
+
+@dataclass
+class KPIRecord:
+    timestamp: datetime
+    total_fee: int
+    total_shortfall: int
+    runtime_sec: float
+
+
+LOG_PATH = Path("logs/kpi.jsonl")
+
+
+def append_kpi(record: KPIRecord, path: Path = LOG_PATH) -> None:
+    """Append a KPI record as a JSON line."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = asdict(record)
+    data["timestamp"] = record.timestamp.isoformat()
+    with path.open("a", encoding="utf-8") as f:
+        json.dump(data, f)
+        f.write("\n")
+
+
+def load_recent(days: int = 30, path: Path = LOG_PATH) -> List[KPIRecord]:
+    """Load records newer than ``days`` from ``path``."""
+    if not path.exists():
+        return []
+    threshold = datetime.now() - timedelta(days=days)
+    records: List[KPIRecord] = []
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            data = json.loads(line)
+            ts = datetime.fromisoformat(data["timestamp"])
+            if ts >= threshold:
+                records.append(
+                    KPIRecord(
+                        timestamp=ts,
+                        total_fee=int(data["total_fee"]),
+                        total_shortfall=int(data["total_shortfall"]),
+                        runtime_sec=float(data["runtime_sec"]),
+                    )
+                )
+    return records
