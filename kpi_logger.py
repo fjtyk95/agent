@@ -17,8 +17,11 @@ class KPIRecord:
     runtime_sec: float
 
 
-def append_kpi(record: KPIRecord, path: Path = Path("logs/kpi.jsonl")) -> None:
-    """Append a KPI record to ``path`` in JSON-lines format."""
+LOG_PATH = Path("logs/kpi.jsonl")
+
+
+def append_kpi(record: KPIRecord, path: Path = LOG_PATH) -> None:
+    """Append a KPI record as a JSON line."""
     path.parent.mkdir(parents=True, exist_ok=True)
     data = asdict(record)
     data["timestamp"] = record.timestamp.isoformat()
