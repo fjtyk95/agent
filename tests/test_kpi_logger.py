@@ -5,7 +5,6 @@ import tempfile
 
 from kpi_logger import KPIRecord, append_kpi, load_recent
 
-
 class KPILoggerTests(unittest.TestCase):
     def test_append_and_load(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

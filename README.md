@@ -1,15 +1,9 @@
 # Agent Repository
 
-This project provides helper utilities for handling bank transaction CSV files. It defines CSV schemas using Python dataclasses and provides utilities for loading data, calculating required safety stock, and generating charts.
 This project provides a small toolkit for optimising interbank transfers. It focuses on loading transaction data from CSV files, estimating the cash safety stock required at each bank, and building a linear program to minimise transfer fees. Charts and export helpers round out the workflow so that the resulting plan can be visualised or written back to disk.
 
 ## Modules
 
-- `schemas.py` — dataclass definitions for each CSV file.
-- `data_load.py` — functions to load CSV files with strict dtype enforcement and column validation.
-- `safety.py` — `calc_safety` computes safety stock levels based on rolling net outflows.
-- `charts.py` — `plot_cost_comparison` creates a stacked bar chart comparing baseline and optimised costs, saved to `/output/cost_comparison.png`.
-- `interactive_notebook.ipynb` — Jupyter notebook with sliders to run an optimisation example.
 - `schemas.py` — dataclass definitions describing each CSV schema.
 - `data_load.py` — utility functions to load CSV files with strict dtype enforcement and column validation.
 - `fee.py` — `FeeCalculator` for looking up transaction fees from the fee table.
@@ -17,8 +11,8 @@ This project provides a small toolkit for optimising interbank transfers. It foc
 - `optimise.py` — builds and solves the optimisation model using `pulp`.
 - `export.py` — writes transfer plans to CSV.
 - `charts.py` — `plot_cost_comparison` saves a simple comparison bar chart.
-- `kpi_logger.py` — persists optimisation KPI metrics to `logs/kpi.jsonl`.
 - `interactive_notebook.ipynb` — Jupyter notebook illustrating an optimisation run.
+
 
 ## Dataclass schema
 
@@ -70,6 +64,8 @@ append_kpi(
     )
 )
 ```
+### Timing utilities
+
 kpi_logger.py
 新規
 +54
