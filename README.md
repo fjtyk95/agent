@@ -1,8 +1,7 @@
 # Agent Repository
 
-This project provides helper utilities for working with bank transaction CSV files.  
-It defines dataclass schemas for the datasets and includes utilities for loading data,
-computing required safety stock, running an optimisation model, and exporting results.
+This repository offers a toolkit for optimising interbank transfers. It contains dataclasses defining each CSV schema, functions for loading data with pandas, utilities to calculate safety stock, an optimisation model built with pulp, and exporters for charts and CSV results.
+
 
 ## Setup
 
