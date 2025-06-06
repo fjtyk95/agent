@@ -1,0 +1,13 @@
+[tool.poetry]
+name = "bankoptimize"
+version = "0.1.0"
+description = "Toolkit for optimising interbank transfers"
+authors = ["Unknown <unknown@example.com>"]
+packages = [{include = "bankoptimize"}]
+
+[tool.poetry.scripts]
+optimize = "bankoptimize.cli:main"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
