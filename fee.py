@@ -1,22 +1,26 @@
-"""Utilities to calculate transfer fees."""
-
 from __future__ import annotations
 
-import pandas as pd
 import re
+from typing import Dict, Tuple
+
+import pandas as pd
 
 __all__ = ["FeeCalculator", "build_fee_lookup"]
 
 
 class FeeCalculator:
-    """Lookup fees from a fee table DataFrame.
+    """Lookup fees from a fee-table DataFrame.
 
     Parameters
     ----------
     df_fee : pd.DataFrame
-        DataFrame containing columns [from_bank, from_branch, service_id,
-        amount_bin, to_bank, to_branch, fee]. The ``amount_bin`` column should
-        specify ranges as "low-high" or open-ended as "low+".
+        Columns **must** include::
+
+            from_bank, from_branch, service_id,
+            amount_bin, to_bank, to_branch, fee
+
+        where ``amount_bin`` is either "low-high"
+        or open-ended "low+" (e.g. "100000+").
     """
 
     def __init__(self, df_fee: pd.DataFrame) -> None:
@@ -33,23 +37,32 @@ class FeeCalculator:
         if missing:
             raise ValueError(f"Missing columns: {missing}")
 
+        # keep a copy to avoid mutating caller’s DataFrame
         self.df_fee = df_fee.copy()
-        # Parse amount_bin into numerical ranges
+
+        # Pre-compute numeric bounds for faster filtering
         bounds = self.df_fee["amount_bin"].apply(self._parse_bin)
         self.df_fee["_low"] = bounds.str[0]
         self.df_fee["_high"] = bounds.str[1]
 
+    # ------------------------------------------------------------------ #
+    # Internal helpers
+    # ------------------------------------------------------------------ #
     @staticmethod
     def _parse_bin(bin_str: str) -> tuple[int, float]:
-        """Return (lower, upper] from an amount_bin string."""
         m = re.match(r"^(\d+)\s*-\s*(\d+)$", bin_str)
         if m:
             return int(m.group(1)), float(m.group(2))
+
         m = re.match(r"^(\d+)\+?$", bin_str)
         if m:
             return int(m.group(1)), float("inf")
+
         raise ValueError(f"Invalid amount_bin: {bin_str}")
 
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
     def get_fee(
         self,
         from_bank: str,
@@ -59,7 +72,7 @@ class FeeCalculator:
         to_bank: str,
         to_branch: str,
     ) -> int:
-        """Return fee for given transaction parameters."""
+        """Return the fee (int, JPY) for a single transfer."""
         df = self.df_fee
         mask = (
             (df["from_bank"] == from_bank)
@@ -76,8 +89,16 @@ class FeeCalculator:
         return int(rows.iloc[0]["fee"])
 
 
-def build_fee_lookup(df_fee: pd.DataFrame) -> Dict[Tuple[str, str, str, str, str], int]:
-    """Return mapping from (from_bank, from_branch, to_bank, to_branch, service) to fee."""
+# ---------------------------------------------------------------------- #
+# Convenience builder
+# ---------------------------------------------------------------------- #
+def build_fee_lookup(
+    df_fee: pd.DataFrame,
+) -> Dict[Tuple[str, str, str, str, str], int]:
+    """Return mapping::
+
+        (from_bank, from_branch, to_bank, to_branch, service_id) -> fee
+    """
     calc = FeeCalculator(df_fee)
     lookup: Dict[Tuple[str, str, str, str, str], int] = {}
     for _, row in df_fee.iterrows():
@@ -88,6 +109,5 @@ def build_fee_lookup(df_fee: pd.DataFrame) -> Dict[Tuple[str, str, str, str, str
             row["to_branch"],
             row["service_id"],
         )
-        # Use upper bound of first bin to compute per-unit fee approx if needed
         lookup[key] = int(row["fee"])
     return lookup
