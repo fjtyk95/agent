@@ -34,6 +34,7 @@ def load_fee_table(path: str) -> pd.DataFrame:
     """Load fee_table.csv enforcing column types."""
     columns = [
         "from_bank",
+        "from_branch",
         "service_id",
         "amount_bin",
         "to_bank",
@@ -42,6 +43,7 @@ def load_fee_table(path: str) -> pd.DataFrame:
     ]
     dtype = {
         "from_bank": str,
+        "from_branch": str,
         "service_id": str,
         "amount_bin": str,
         "to_bank": str,
