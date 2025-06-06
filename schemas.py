@@ -18,6 +18,7 @@ class BankMaster:
 @dataclass
 class FeeRow:
     from_bank: str
+    from_branch: str
     service_id: str
     amount_bin: str
     to_bank: str

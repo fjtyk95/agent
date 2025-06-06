@@ -1,23 +1,26 @@
 import pulp
-from typing import Iterable, Dict, Tuple, Callable
+from typing import Iterable, Dict, Tuple, Mapping
 
 
 def build_model(
     banks: Iterable[str],
+    branches: Mapping[str, Iterable[str]],
     days: Iterable[str],
     services: Iterable[str],
     net_cash: Dict[Tuple[str, str], int],
     initial_balance: Dict[str, int],
     safety: Dict[str, int],
-    fee_lookup: Dict[Tuple[str, str, str], int],
+    fee_lookup: Dict[Tuple[str, str, str, str, str], int],
     lambda_penalty: float = 1.0,
-) -> Dict[str, Dict[Tuple[str, str, str, str], float]]:
+) -> Dict[str, Dict[Tuple[str, str, str, str, str, str], float]]:
     """Build and solve transfer optimisation model.
 
     Parameters
     ----------
     banks : Iterable[str]
         Bank identifiers.
+    branches : Mapping[str, Iterable[str]]
+        Branch identifiers for each bank.
     days : Iterable[str]
         Ordered sequence of day labels.
     services : Iterable[str]
@@ -28,8 +31,8 @@ def build_model(
         Starting balance per bank.
     safety : Dict[str, int]
         Required minimum balance per bank.
-    fee_lookup : Dict[Tuple[str, str, str], int]
-        Mapping of (from_bank, to_bank, service) to unit fee.
+    fee_lookup : Dict[Tuple[str, str, str, str, str], int]
+        Mapping of (from_bank, from_branch, to_bank, to_branch, service) to unit fee.
     lambda_penalty : float, default 1.0
         Weight for safety shortfall penalty.
 
@@ -44,18 +47,24 @@ def build_model(
 
     prob = pulp.LpProblem("fund_transfers", pulp.LpMinimize)
 
-    x = pulp.LpVariable.dicts(
-        "x", (banks, banks, services, days), lowBound=0
-    )
+    x: Dict[Tuple[str, str, str, str, str, str], pulp.LpVariable] = {}
+    for i in banks:
+        for ib in branches.get(i, []):
+            for j in banks:
+                for jb in branches.get(j, []):
+                    if i == j and ib == jb:
+                        continue
+                    for s in services:
+                        for d in days:
+                            x[(i, ib, j, jb, s, d)] = pulp.LpVariable(
+                                f"x_{i}_{ib}_{j}_{jb}_{s}_{d}", lowBound=0
+                            )
     B = pulp.LpVariable.dicts("B", (banks, days), lowBound=0)
     shortfall = pulp.LpVariable.dicts("S", (banks, days), lowBound=0)
 
     fee_expr = [
-        fee_lookup.get((i, j, s), 0) * x[i][j][s][d]
-        for i in banks
-        for j in banks
-        for s in services
-        for d in days
+        fee_lookup.get((i, ib, j, jb, s), 0) * var
+        for (i, ib, j, jb, s, d), var in x.items()
     ]
 
     penalty_expr = [shortfall[i][d] for i in banks for d in days]
@@ -64,8 +73,16 @@ def build_model(
 
     for i in banks:
         for idx, d in enumerate(days):
-            incoming = pulp.lpSum(x[j][i][s][d] for j in banks for s in services)
-            outgoing = pulp.lpSum(x[i][j][s][d] for j in banks for s in services)
+            incoming = pulp.lpSum(
+                var
+                for (fb, fbr, tb, tbr, s, dd), var in x.items()
+                if tb == i and dd == d
+            )
+            outgoing = pulp.lpSum(
+                var
+                for (fb, fbr, tb, tbr, s, dd), var in x.items()
+                if fb == i and dd == d
+            )
             net = net_cash.get((i, d), 0)
             if idx == 0:
                 prev = initial_balance.get(i, 0)
@@ -76,13 +93,7 @@ def build_model(
 
     prob.solve(pulp.PULP_CBC_CMD(msg=False))
 
-    transfers = {
-        (i, j, s, d): x[i][j][s][d].value()
-        for i in banks
-        for j in banks
-        for s in services
-        for d in days
-    }
+    transfers = {key: var.value() for key, var in x.items()}
     balances = {(i, d): B[i][d].value() for i in banks for d in days}
 
     return {"transfers": transfers, "balance": balances}
