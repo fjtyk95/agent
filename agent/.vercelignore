@@ -1,0 +1,70 @@
+# Development files
+web/uploads/
+output/
+logs/
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+interactive_notebook.ipynb
+
+# Testing
+tests/
+.pytest_cache/
+test_*.py
+*_test.py
+
+# Documentation
+docs/
+*.md
+!README.md
+ACCEPTANCE_TEST.md
+WEB_ACCEPTANCE_TEST.md
+WEB_FRONTEND_GUIDE.md
+SERVER_DEBUG_GUIDE.md
+VERCEL_DEPLOY_GUIDE.md
+
+# CLI and bank packages
+bankoptimize/
+cli.py
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+
+# Large output files
+output/*.csv
+output/*.png
+logs/*.jsonl
+
+# Git
+.git/
+.gitignore
+
+# Web development files
+web/start_server.py
+web/api/
+
+# Schemas (not needed for runtime)
+schemas.py

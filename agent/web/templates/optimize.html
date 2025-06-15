@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}最適化実行 - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="fas fa-cogs me-2 text-primary"></i>
+                最適化実行
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ダッシュボード</a></li>
+                    <li class="breadcrumb-item active">最適化実行</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <!-- Parameter Settings -->
+        <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-sliders-h me-2"></i>
+                    パラメータ設定
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="optimizeForm">
+                    
+                    <!-- Horizon -->
+                    <div class="mb-4">
+                        <label for="horizon" class="form-label">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <strong>ホライズン期間</strong>
+                        </label>
+                        <div class="row align-items-center">
+                            <div class="col-8">
+                                <input type="range" class="form-range" id="horizon" 
+                                       min="7" max="90" value="30" step="1">
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-primary fs-6" id="horizonValue">30</span> 日
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Safety Stock計算の期間</small>
+                    </div>
+                    
+                    <!-- Quantile -->
+                    <div class="mb-4">
+                        <label for="quantile" class="form-label">
+                            <i class="fas fa-chart-line me-2"></i>
+                            <strong>分位点</strong>
+                        </label>
+                        <div class="row align-items-center">
+                            <div class="col-8">
+                                <input type="range" class="form-range" id="quantile" 
+                                       min="0.8" max="0.99" value="0.95" step="0.01">
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-success fs-6" id="quantileValue">0.95</span>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">リスク許容レベル (高いほど保守的)</small>
+                    </div>
+                    
+                    <!-- Lambda Penalty -->
+                    <div class="mb-4">
+                        <label for="lambda_penalty" class="form-label">
+                            <i class="fas fa-weight-hanging me-2"></i>
+                            <strong>ペナルティ重み (λ)</strong>
+                        </label>
+                        <div class="row align-items-center">
+                            <div class="col-8">
+                                <input type="range" class="form-range" id="lambda_penalty" 
+                                       min="0.1" max="10.0" value="1.0" step="0.1">
+                            </div>
+                            <div class="col-4">
+                                <span class="badge bg-warning text-dark fs-6" id="lambdaValue">1.0</span>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">残高不足に対するペナルティ</small>
+                    </div>
+                    
+                    <!-- Cut-off Constraints -->
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="use_cutoff" checked>
+                            <label class="form-check-label" for="use_cutoff">
+                                <i class="fas fa-clock me-2"></i>
+                                <strong>Cut-off時刻制約</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted">営業時間外は翌日扱い</small>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Action Buttons -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="optimizeBtn">
+                            <i class="fas fa-play me-2"></i>
+                            最適化開始
+                        </button>
+                        
+                        <button type="button" class="btn btn-outline-secondary" onclick="resetParameters()">
+                            <i class="fas fa-undo me-2"></i>
+                            パラメータリセット
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <!-- Status Area -->
+        <div class="card border-0 shadow-sm mb-4" id="statusCard">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    ステータス
+                </h5>
+            </div>
+            <div class="card-body" id="statusBody">
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-play-circle fa-3x mb-3"></i>
+                    <h5>最適化待機中</h5>
+                    <p>左側のパラメータを設定して「最適化開始」ボタンを押してください。</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Area -->
+        <div class="card border-0 shadow-sm" id="resultsCard" style="display: none;">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-check-circle me-2"></i>
+                    最適化結果
+                </h5>
+            </div>
+            <div class="card-body" id="resultsBody">
+                <!-- Results will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Error Area -->
+        <div class="card border-0 shadow-sm" id="errorCard" style="display: none;">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    エラー
+                </h5>
+            </div>
+            <div class="card-body" id="errorBody">
+                <!-- Error messages will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Parameter sliders
+    const horizon = document.getElementById('horizon');
+    const horizonValue = document.getElementById('horizonValue');
+    const quantile = document.getElementById('quantile');
+    const quantileValue = document.getElementById('quantileValue');
+    const lambdaPenalty = document.getElementById('lambda_penalty');
+    const lambdaValue = document.getElementById('lambdaValue');
+    
+    // Update display values
+    horizon.addEventListener('input', () => {
+        horizonValue.textContent = horizon.value;
+    });
+    
+    quantile.addEventListener('input', () => {
+        quantileValue.textContent = parseFloat(quantile.value).toFixed(2);
+    });
+    
+    lambdaPenalty.addEventListener('input', () => {
+        lambdaValue.textContent = parseFloat(lambdaPenalty.value).toFixed(1);
+    });
+    
+    // Check for sample data parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('sample') === 'true') {
+        // Automatically set session for sample data
+        fetch('/api/set_sample_data', {method: 'POST'})
+            .then(() => {
+                showInfo('サンプルデータが設定されました。最適化を開始できます。');
+            });
+    }
+    
+    // Form submission
+    document.getElementById('optimizeForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        runOptimization();
+    });
+});
+
+function runOptimization() {
+    const optimizeBtn = document.getElementById('optimizeBtn');
+    const statusCard = document.getElementById('statusCard');
+    const statusBody = document.getElementById('statusBody');
+    const resultsCard = document.getElementById('resultsCard');
+    const errorCard = document.getElementById('errorCard');
+    
+    // Prepare parameters
+    const params = {
+        horizon: parseInt(document.getElementById('horizon').value),
+        quantile: parseFloat(document.getElementById('quantile').value),
+        lambda_penalty: parseFloat(document.getElementById('lambda_penalty').value),
+        use_cutoff: document.getElementById('use_cutoff').checked
+    };
+    
+    // Update UI
+    optimizeBtn.disabled = true;
+    optimizeBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>実行中...';
+    
+    resultsCard.style.display = 'none';
+    errorCard.style.display = 'none';
+    statusCard.style.display = 'block';
+    
+    // Show progress
+    statusBody.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>最適化実行中...</h5>
+            <p class="text-muted">パラメータ: ホライズン=${params.horizon}日, 分位点=${params.quantile}, λ=${params.lambda_penalty}</p>
+            <div class="progress mt-3">
+                <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                     style="width: 100%"></div>
+            </div>
+        </div>
+    `;
+    
+    // Call API
+    fetch('/api/optimize', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(params)
+    })
+    .then(response => response.json())
+    .then(data => {
+        optimizeBtn.disabled = false;
+        optimizeBtn.innerHTML = '<i class="fas fa-play me-2"></i>最適化開始';
+        
+        if (data.success) {
+            showResults(data);
+        } else {
+            showError(data.error);
+        }
+    })
+    .catch(error => {
+        optimizeBtn.disabled = false;
+        optimizeBtn.innerHTML = '<i class="fas fa-play me-2"></i>最適化開始';
+        showError('通信エラー: ' + error.message);
+    });
+}
+
+function showResults(data) {
+    const statusCard = document.getElementById('statusCard');
+    const resultsCard = document.getElementById('resultsCard');
+    const resultsBody = document.getElementById('resultsBody');
+    
+    statusCard.style.display = 'none';
+    resultsCard.style.display = 'block';
+    
+    const summary = data.summary;
+    const transfers = data.transfers;
+    
+    resultsBody.innerHTML = `
+        <!-- Summary Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="text-primary">
+                        <i class="fas fa-exchange-alt fa-2x"></i>
+                    </div>
+                    <h4 class="text-primary mt-2">${summary.total_transfers}</h4>
+                    <small class="text-muted">資金移動件数</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="text-success">
+                        <i class="fas fa-yen-sign fa-2x"></i>
+                    </div>
+                    <h4 class="text-success mt-2">¥${summary.total_fee.toLocaleString()}</h4>
+                    <small class="text-muted">総手数料</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="text-warning">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <h4 class="text-warning mt-2">${summary.runtime_sec.toFixed(1)}秒</h4>
+                    <small class="text-muted">実行時間</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <div class="text-info">
+                        <i class="fas fa-university fa-2x"></i>
+                    </div>
+                    <h4 class="text-info mt-2">${summary.banks_count}</h4>
+                    <small class="text-muted">対象銀行数</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Transfer Plan Preview -->
+        <h6><i class="fas fa-list me-2"></i>資金移動計画 (上位10件)</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>実行日</th>
+                        <th>送金元</th>
+                        <th>送金先</th>
+                        <th>サービス</th>
+                        <th class="text-end">金額</th>
+                        <th class="text-end">手数料</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${transfers.map(t => `
+                        <tr>
+                            <td>${t.execute_date}</td>
+                            <td>${t.from_bank}-${t.from_branch}</td>
+                            <td>${t.to_bank}-${t.to_branch}</td>
+                            <td><span class="badge bg-secondary">${t.service_id}</span></td>
+                            <td class="text-end">¥${t.amount.toLocaleString()}</td>
+                            <td class="text-end">¥${t.expected_fee.toLocaleString()}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Download Links -->
+        <div class="mt-4">
+            <h6><i class="fas fa-download me-2"></i>ダウンロード</h6>
+            <div class="btn-group" role="group">
+                <a href="${data.download_links.csv}" class="btn btn-outline-primary">
+                    <i class="fas fa-file-csv me-2"></i>CSVファイル
+                </a>
+                <a href="${data.download_links.chart}" class="btn btn-outline-success">
+                    <i class="fas fa-chart-bar me-2"></i>コスト比較図
+                </a>
+                <a href="{{ url_for('results_page') }}" class="btn btn-outline-info">
+                    <i class="fas fa-eye me-2"></i>詳細表示
+                </a>
+            </div>
+        </div>
+    `;
+}
+
+function showError(errorMessage) {
+    const statusCard = document.getElementById('statusCard');
+    const errorCard = document.getElementById('errorCard');
+    const errorBody = document.getElementById('errorBody');
+    
+    statusCard.style.display = 'none';
+    errorCard.style.display = 'block';
+    
+    errorBody.innerHTML = `
+        <div class="alert alert-danger" role="alert">
+            <h6><i class="fas fa-exclamation-triangle me-2"></i>エラーが発生しました</h6>
+            <p class="mb-0">${errorMessage}</p>
+        </div>
+        
+        <h6>対処方法:</h6>
+        <ul>
+            <li>ファイルが正しくアップロードされているか確認してください</li>
+            <li>CSVファイルの形式が正しいか確認してください</li>
+            <li>パラメータの値を調整してみてください</li>
+            <li>問題が続く場合は、<a href="{{ url_for('upload_files') }}">ファイルアップロード</a>からやり直してください</li>
+        </ul>
+    `;
+}
+
+function showInfo(message) {
+    const statusBody = document.getElementById('statusBody');
+    statusBody.innerHTML = `
+        <div class="alert alert-info" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            ${message}
+        </div>
+    `;
+}
+
+function resetParameters() {
+    document.getElementById('horizon').value = 30;
+    document.getElementById('quantile').value = 0.95;
+    document.getElementById('lambda_penalty').value = 1.0;
+    document.getElementById('use_cutoff').checked = true;
+    
+    // Update displays
+    document.getElementById('horizonValue').textContent = '30';
+    document.getElementById('quantileValue').textContent = '0.95';
+    document.getElementById('lambdaValue').textContent = '1.0';
+}
+</script>
+{% endblock %}

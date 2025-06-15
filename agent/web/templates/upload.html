@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}ファイルアップロード - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="fas fa-upload me-2 text-primary"></i>
+                ファイルアップロード
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ダッシュボード</a></li>
+                    <li class="breadcrumb-item active">ファイルアップロード</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <!-- Instructions -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    アップロード手順
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-3">以下の4つのCSVファイルをアップロードしてください：</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6><i class="fas fa-university me-2 text-primary"></i>bank_master.csv</h6>
+                            <p class="small text-muted">銀行・支店・サービス・Cut-off時刻</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6><i class="fas fa-money-bill me-2 text-success"></i>fee_table.csv</h6>
+                            <p class="small text-muted">送金手数料テーブル</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <h6><i class="fas fa-wallet me-2 text-warning"></i>balance_snapshot.csv</h6>
+                            <p class="small text-muted">現在残高スナップショット</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6><i class="fas fa-chart-line me-2 text-info"></i>cashflow_history.csv</h6>
+                            <p class="small text-muted">過去のキャッシュフロー履歴</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning" role="alert">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>注意:</strong> ファイルサイズは最大16MBまでです。CSVファイルのみアップロード可能です。
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Form -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cloud-upload-alt me-2"></i>
+                    ファイル選択
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" id="uploadForm">
+                    
+                    <!-- Bank Master -->
+                    <div class="mb-4">
+                        <label for="bank_master" class="form-label">
+                            <i class="fas fa-university me-2 text-primary"></i>
+                            <strong>Bank Master CSV</strong>
+                        </label>
+                        <input type="file" class="form-control" id="bank_master" name="bank_master" 
+                               accept=".csv" required>
+                        <div class="form-text">
+                            列: bank_id, branch_id, service_id, cut_off_time
+                        </div>
+                    </div>
+                    
+                    <!-- Fee Table -->
+                    <div class="mb-4">
+                        <label for="fee_table" class="form-label">
+                            <i class="fas fa-money-bill me-2 text-success"></i>
+                            <strong>Fee Table CSV</strong>
+                        </label>
+                        <input type="file" class="form-control" id="fee_table" name="fee_table" 
+                               accept=".csv" required>
+                        <div class="form-text">
+                            列: from_bank, from_branch, service_id, amount_bin, to_bank, to_branch, fee
+                        </div>
+                    </div>
+                    
+                    <!-- Balance Snapshot -->
+                    <div class="mb-4">
+                        <label for="balance_snapshot" class="form-label">
+                            <i class="fas fa-wallet me-2 text-warning"></i>
+                            <strong>Balance Snapshot CSV</strong>
+                        </label>
+                        <input type="file" class="form-control" id="balance_snapshot" name="balance_snapshot" 
+                               accept=".csv" required>
+                        <div class="form-text">
+                            列: bank_id, balance
+                        </div>
+                    </div>
+                    
+                    <!-- Cashflow History -->
+                    <div class="mb-4">
+                        <label for="cashflow_history" class="form-label">
+                            <i class="fas fa-chart-line me-2 text-info"></i>
+                            <strong>Cashflow History CSV</strong>
+                        </label>
+                        <input type="file" class="form-control" id="cashflow_history" name="cashflow_history" 
+                               accept=".csv" required>
+                        <div class="form-text">
+                            列: date, bank_id, amount, direction
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mb-3" id="progressContainer" style="display: none;">
+                        <label class="form-label">アップロード進行状況</label>
+                        <div class="progress">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 id="progressBar" role="progressbar" style="width: 0%">
+                                0%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-outline-secondary" onclick="useSampleData()">
+                            <i class="fas fa-flask me-2"></i>
+                            サンプルデータ使用
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="uploadBtn">
+                            <i class="fas fa-upload me-2"></i>
+                            アップロード開始
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Sample Data Info -->
+        <div class="card border-0 shadow-sm mt-4">
+            <div class="card-header bg-light">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-flask me-2 text-secondary"></i>
+                    サンプルデータについて
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    テスト用のサンプルデータが既に準備されています。
+                    「サンプルデータ使用」ボタンをクリックすると、既存のサンプルファイルを使用して最適化を試すことができます。
+                </p>
+                
+                <div class="row text-center">
+                    <div class="col-3">
+                        <div class="text-primary">
+                            <i class="fas fa-university fa-2x"></i>
+                            <div class="mt-1 small">3銀行</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="text-success">
+                            <i class="fas fa-code-branch fa-2x"></i>
+                            <div class="mt-1 small">6支店</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="text-warning">
+                            <i class="fas fa-money-bill fa-2x"></i>
+                            <div class="mt-1 small">48手数料</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="text-info">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                            <div class="mt-1 small">60履歴</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    
+    // File input validation
+    const fileInputs = form.querySelectorAll('input[type="file"]');
+    fileInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                // Check file size (16MB limit)
+                if (file.size > 16 * 1024 * 1024) {
+                    alert('ファイルサイズが16MBを超えています: ' + this.name);
+                    this.value = '';
+                    return;
+                }
+                
+                // Check file extension
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    alert('CSVファイルのみアップロード可能です: ' + this.name);
+                    this.value = '';
+                    return;
+                }
+                
+                // Visual feedback
+                this.classList.add('is-valid');
+            } else {
+                this.classList.remove('is-valid');
+            }
+        });
+    });
+    
+    // Form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate all files are selected
+        let allSelected = true;
+        fileInputs.forEach(input => {
+            if (!input.files[0]) {
+                allSelected = false;
+                input.classList.add('is-invalid');
+            } else {
+                input.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!allSelected) {
+            alert('すべてのファイルを選択してください。');
+            return;
+        }
+        
+        // Show progress and submit
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>アップロード中...';
+        progressContainer.style.display = 'block';
+        
+        // Simulate progress (real implementation would use XMLHttpRequest)
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 20;
+            if (progress > 100) progress = 100;
+            
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = Math.round(progress) + '%';
+            
+            if (progress >= 100) {
+                clearInterval(interval);
+                // Submit the form
+                setTimeout(() => {
+                    form.submit();
+                }, 500);
+            }
+        }, 200);
+    });
+});
+
+function useSampleData() {
+    if (confirm('サンプルデータを使用して最適化を開始しますか？')) {
+        // Redirect to optimization page with sample data flag
+        window.location.href = '{{ url_for("optimize_page") }}?sample=true';
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,625 @@
+{% extends "base.html" %}
+
+{% block title %}結果表示 - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="fas fa-chart-line me-2 text-primary"></i>
+                結果表示
+            </h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">ダッシュボード</a></li>
+                    <li class="breadcrumb-item active">結果表示</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="card-title mb-1">
+                            <i class="fas fa-bolt me-2 text-warning"></i>
+                            クイックアクション
+                        </h5>
+                        <p class="card-text text-muted mb-0">
+                            最新の最適化結果を表示するか、新しい最適化を実行してください。
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-primary me-2" onclick="loadLatestResults()">
+                            <i class="fas fa-sync-alt me-2"></i>
+                            最新結果読込
+                        </button>
+                        <a href="{{ url_for('optimize_page') }}" class="btn btn-outline-success">
+                            <i class="fas fa-play me-2"></i>
+                            新規実行
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Container -->
+<div id="resultsContainer">
+    <!-- Initial State -->
+    <div class="row" id="emptyState">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center py-5">
+                    <div class="text-muted mb-4">
+                        <i class="fas fa-chart-line fa-5x"></i>
+                    </div>
+                    <h4 class="text-muted">結果データがありません</h4>
+                    <p class="text-muted mb-4">
+                        最適化を実行して結果を表示するか、過去の実行結果を読み込んでください。
+                    </p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="{{ url_for('optimize_page') }}" class="btn btn-primary">
+                            <i class="fas fa-cogs me-2"></i>
+                            最適化実行
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="loadLatestResults()">
+                            <i class="fas fa-history me-2"></i>
+                            過去結果読込
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Display -->
+    <div id="resultsDisplay" style="display: none;">
+        <!-- Summary Cards -->
+        <div class="row mb-4" id="summaryCards">
+            <!-- Will be populated dynamically -->
+        </div>
+        
+        <!-- Transfer Plan Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="card-title mb-0">
+                                <i class="fas fa-exchange-alt me-2"></i>
+                                資金移動計画
+                            </h5>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-light" onclick="exportToCSV()">
+                                    <i class="fas fa-file-csv me-1"></i>CSV
+                                </button>
+                                <button class="btn btn-light" onclick="exportToExcel()">
+                                    <i class="fas fa-file-excel me-1"></i>Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Search and Filter -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="searchInput" 
+                                           placeholder="銀行名、日付で検索...">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="bankFilter">
+                                    <option value="">全銀行</option>
+                                    <!-- Options will be populated dynamically -->
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select class="form-select" id="serviceFilter">
+                                    <option value="">全サービス</option>
+                                    <!-- Options will be populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Table -->
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="transfersTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>実行日</th>
+                                        <th>送金元</th>
+                                        <th>送金先</th>
+                                        <th>サービス</th>
+                                        <th class="text-end">金額</th>
+                                        <th class="text-end">手数料</th>
+                                        <th>状態</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transfersTableBody">
+                                    <!-- Will be populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        <nav aria-label="Transfer plan pagination" id="paginationContainer">
+                            <!-- Will be populated dynamically -->
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Charts and Analysis -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-bar me-2"></i>
+                            コスト分析
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="costChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            銀行別送金分布
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="distributionChart" width="400" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Safety Stock Analysis -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            安全在庫分析
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="safetyStockCards">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Execution Details -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            実行詳細
+                        </h5>
+                    </div>
+                    <div class="card-body" id="executionDetails">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" 
+     id="loadingOverlay" style="background: rgba(0,0,0,0.5); z-index: 1050; display: none !important;">
+    <div class="card border-0 shadow">
+        <div class="card-body text-center">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>データ読み込み中...</h5>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentResults = null;
+let currentPage = 1;
+const itemsPerPage = 20;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Setup search and filters
+    document.getElementById('searchInput').addEventListener('input', filterTable);
+    document.getElementById('bankFilter').addEventListener('change', filterTable);
+    document.getElementById('serviceFilter').addEventListener('change', filterTable);
+    
+    // Try to load latest results automatically
+    loadLatestResults();
+});
+
+function loadLatestResults() {
+    showLoading(true);
+    
+    // Mock API call - in real implementation, this would fetch from /api/latest_results
+    setTimeout(() => {
+        // Simulate results data
+        const mockResults = {
+            summary: {
+                total_transfers: 8,
+                total_fee: 2640,
+                runtime_sec: 1.2,
+                banks_count: 3,
+                timestamp: new Date().toISOString()
+            },
+            transfers: generateMockTransfers(),
+            safety_stocks: {
+                'MIZUHO': 150000,
+                'MUFG': 120000,
+                'SMBC': 180000
+            },
+            parameters: {
+                horizon: 30,
+                quantile: 0.95,
+                lambda_penalty: 1.0,
+                use_cutoff: true
+            }
+        };
+        
+        displayResults(mockResults);
+        showLoading(false);
+    }, 1500);
+}
+
+function generateMockTransfers() {
+    const banks = ['MIZUHO', 'MUFG', 'SMBC'];
+    const branches = ['001', '002'];
+    const services = ['G', 'N'];
+    const transfers = [];
+    
+    for (let i = 0; i < 15; i++) {
+        const fromBank = banks[Math.floor(Math.random() * banks.length)];
+        let toBank;
+        do {
+            toBank = banks[Math.floor(Math.random() * banks.length)];
+        } while (toBank === fromBank);
+        
+        const date = new Date();
+        date.setDate(date.getDate() + Math.floor(Math.random() * 7));
+        
+        transfers.push({
+            execute_date: date.toISOString().split('T')[0],
+            from_bank: fromBank,
+            from_branch: branches[Math.floor(Math.random() * branches.length)],
+            to_bank: toBank,
+            to_branch: branches[Math.floor(Math.random() * branches.length)],
+            service_id: services[Math.floor(Math.random() * services.length)],
+            amount: Math.floor(Math.random() * 500000) + 50000,
+            expected_fee: Math.floor(Math.random() * 400) + 200
+        });
+    }
+    
+    return transfers.sort((a, b) => a.execute_date.localeCompare(b.execute_date));
+}
+
+function displayResults(results) {
+    currentResults = results;
+    
+    // Hide empty state and show results
+    document.getElementById('emptyState').style.display = 'none';
+    document.getElementById('resultsDisplay').style.display = 'block';
+    
+    // Update summary cards
+    updateSummaryCards(results.summary);
+    
+    // Update transfer table
+    updateTransferTable(results.transfers);
+    
+    // Update filters
+    updateFilters(results.transfers);
+    
+    // Update charts
+    updateCharts(results);
+    
+    // Update safety stock analysis
+    updateSafetyStockAnalysis(results.safety_stocks);
+    
+    // Update execution details
+    updateExecutionDetails(results);
+}
+
+function updateSummaryCards(summary) {
+    const container = document.getElementById('summaryCards');
+    container.innerHTML = `
+        <div class="col-md-3">
+            <div class="card border-0 bg-primary text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-exchange-alt fa-2x mb-2"></i>
+                    <h3>${summary.total_transfers}</h3>
+                    <p class="mb-0">資金移動件数</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-success text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-yen-sign fa-2x mb-2"></i>
+                    <h3>¥${summary.total_fee.toLocaleString()}</h3>
+                    <p class="mb-0">総手数料</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-warning text-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-2x mb-2"></i>
+                    <h3>${summary.runtime_sec.toFixed(1)}秒</h3>
+                    <p class="mb-0">実行時間</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 bg-info text-white">
+                <div class="card-body text-center">
+                    <i class="fas fa-university fa-2x mb-2"></i>
+                    <h3>${summary.banks_count}</h3>
+                    <p class="mb-0">対象銀行数</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function updateTransferTable(transfers) {
+    const tbody = document.getElementById('transfersTableBody');
+    
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageTransfers = transfers.slice(startIndex, endIndex);
+    
+    tbody.innerHTML = pageTransfers.map(transfer => `
+        <tr>
+            <td>${transfer.execute_date}</td>
+            <td>${transfer.from_bank}-${transfer.from_branch}</td>
+            <td>${transfer.to_bank}-${transfer.to_branch}</td>
+            <td><span class="badge bg-secondary">${transfer.service_id}</span></td>
+            <td class="text-end">¥${transfer.amount.toLocaleString()}</td>
+            <td class="text-end">¥${transfer.expected_fee.toLocaleString()}</td>
+            <td><span class="badge bg-success">計画済み</span></td>
+        </tr>
+    `).join('');
+    
+    updatePagination(transfers.length);
+}
+
+function updateFilters(transfers) {
+    const bankFilter = document.getElementById('bankFilter');
+    const serviceFilter = document.getElementById('serviceFilter');
+    
+    // Update bank filter
+    const banks = [...new Set(transfers.flatMap(t => [t.from_bank, t.to_bank]))];
+    bankFilter.innerHTML = '<option value="">全銀行</option>' +
+        banks.map(bank => `<option value="${bank}">${bank}</option>`).join('');
+    
+    // Update service filter
+    const services = [...new Set(transfers.map(t => t.service_id))];
+    serviceFilter.innerHTML = '<option value="">全サービス</option>' +
+        services.map(service => `<option value="${service}">${service}</option>`).join('');
+}
+
+function updateCharts(results) {
+    // Cost comparison chart
+    const costCtx = document.getElementById('costChart').getContext('2d');
+    new Chart(costCtx, {
+        type: 'bar',
+        data: {
+            labels: ['ベースライン', '最適化後'],
+            datasets: [{
+                label: 'コスト (円)',
+                data: [results.summary.total_fee * 1.3, results.summary.total_fee],
+                backgroundColor: ['#dc3545', '#28a745'],
+                borderColor: ['#dc3545', '#28a745'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '¥' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Distribution chart
+    const distributionCtx = document.getElementById('distributionChart').getContext('2d');
+    const bankCounts = {};
+    results.transfers.forEach(t => {
+        bankCounts[t.from_bank] = (bankCounts[t.from_bank] || 0) + 1;
+    });
+    
+    new Chart(distributionCtx, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(bankCounts),
+            datasets: [{
+                data: Object.values(bankCounts),
+                backgroundColor: ['#007bff', '#28a745', '#ffc107'],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function updateSafetyStockAnalysis(safetyStocks) {
+    const container = document.getElementById('safetyStockCards');
+    container.innerHTML = Object.entries(safetyStocks).map(([bank, amount]) => `
+        <div class="col-md-4">
+            <div class="card border-0 bg-light">
+                <div class="card-body text-center">
+                    <h5 class="text-primary">${bank}</h5>
+                    <h3 class="text-warning">¥${amount.toLocaleString()}</h3>
+                    <p class="text-muted mb-0">安全在庫</p>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function updateExecutionDetails(results) {
+    const container = document.getElementById('executionDetails');
+    container.innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>実行パラメータ</h6>
+                <ul class="list-unstyled">
+                    <li><strong>ホライズン:</strong> ${results.parameters.horizon} 日</li>
+                    <li><strong>分位点:</strong> ${results.parameters.quantile}</li>
+                    <li><strong>ペナルティ重み:</strong> ${results.parameters.lambda_penalty}</li>
+                    <li><strong>Cut-off制約:</strong> ${results.parameters.use_cutoff ? '有効' : '無効'}</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>実行情報</h6>
+                <ul class="list-unstyled">
+                    <li><strong>実行時刻:</strong> ${new Date(results.summary.timestamp).toLocaleString('ja-JP')}</li>
+                    <li><strong>実行時間:</strong> ${results.summary.runtime_sec.toFixed(2)} 秒</li>
+                    <li><strong>ソルバー:</strong> PuLP + CBC</li>
+                    <li><strong>ステータス:</strong> <span class="badge bg-success">最適解</span></li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+function updatePagination(totalItems) {
+    const container = document.getElementById('paginationContainer');
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    
+    if (totalPages <= 1) {
+        container.innerHTML = '';
+        return;
+    }
+    
+    let pagination = '<ul class="pagination justify-content-center">';
+    
+    // Previous button
+    pagination += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${currentPage - 1})">前へ</a>
+    </li>`;
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+        if (i === currentPage || i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+            pagination += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+            </li>`;
+        } else if (i === currentPage - 2 || i === currentPage + 2) {
+            pagination += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+    
+    // Next button
+    pagination += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" onclick="changePage(${currentPage + 1})">次へ</a>
+    </li>`;
+    
+    pagination += '</ul>';
+    container.innerHTML = pagination;
+}
+
+function changePage(page) {
+    if (!currentResults) return;
+    
+    const totalPages = Math.ceil(currentResults.transfers.length / itemsPerPage);
+    if (page < 1 || page > totalPages) return;
+    
+    currentPage = page;
+    updateTransferTable(currentResults.transfers);
+}
+
+function filterTable() {
+    if (!currentResults) return;
+    
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const bankFilter = document.getElementById('bankFilter').value;
+    const serviceFilter = document.getElementById('serviceFilter').value;
+    
+    let filteredTransfers = currentResults.transfers.filter(transfer => {
+        const matchesSearch = transfer.from_bank.toLowerCase().includes(searchTerm) ||
+                            transfer.to_bank.toLowerCase().includes(searchTerm) ||
+                            transfer.execute_date.includes(searchTerm);
+        
+        const matchesBank = !bankFilter || 
+                          transfer.from_bank === bankFilter || 
+                          transfer.to_bank === bankFilter;
+        
+        const matchesService = !serviceFilter || transfer.service_id === serviceFilter;
+        
+        return matchesSearch && matchesBank && matchesService;
+    });
+    
+    currentPage = 1;
+    updateTransferTable(filteredTransfers);
+}
+
+function exportToCSV() {
+    if (!currentResults) return;
+    
+    alert('CSV エクスポート機能は実装中です。');
+}
+
+function exportToExcel() {
+    if (!currentResults) return;
+    
+    alert('Excel エクスポート機能は実装中です。');
+}
+
+function showLoading(show) {
+    const overlay = document.getElementById('loadingOverlay');
+    overlay.style.display = show ? 'flex' : 'none';
+}
+</script>
+{% endblock %}

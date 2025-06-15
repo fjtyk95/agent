@@ -1,0 +1,3 @@
+execute_date,from_bank,to_bank,service_id,amount,expected_fee
+2025-06-08,MIZUHO,MUFG,N,82750,0
+2025-06-13,SMBC,MIZUHO,N,1354500,0

@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}ダッシュボード - {{ super() }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1 class="h2">
+                <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+                ダッシュボード
+            </h1>
+            <div class="badge bg-success fs-6">
+                <i class="fas fa-check-circle me-1"></i>
+                システム稼働中
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-primary mb-2">
+                    <i class="fas fa-university fa-2x"></i>
+                </div>
+                <h3 class="card-title text-primary">3</h3>
+                <p class="card-text text-muted">対象銀行</p>
+                <small class="text-muted">みずほ・MUFG・SMBC</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-success mb-2">
+                    <i class="fas fa-exchange-alt fa-2x"></i>
+                </div>
+                <h3 class="card-title text-success">6</h3>
+                <p class="card-text text-muted">支店数</p>
+                <small class="text-muted">各銀行2支店</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-warning mb-2">
+                    <i class="fas fa-clock fa-2x"></i>
+                </div>
+                <h3 class="card-title text-warning">30</h3>
+                <p class="card-text text-muted">日間</p>
+                <small class="text-muted">最適化ホライズン</small>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body text-center">
+                <div class="text-info mb-2">
+                    <i class="fas fa-shield-alt fa-2x"></i>
+                </div>
+                <h3 class="card-title text-info">95%</h3>
+                <p class="card-text text-muted">安全在庫</p>
+                <small class="text-muted">分位点レベル</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Workflow Steps -->
+<div class="row mb-4">
+    <div class="col-12">
+        <h3 class="mb-3">
+            <i class="fas fa-workflow me-2"></i>
+            ワークフロー
+        </h3>
+        
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-upload me-2"></i>
+                            ステップ 1
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">ファイルアップロード</h6>
+                        <p class="card-text">4つのCSVファイルをアップロード</p>
+                        <ul class="list-unstyled small">
+                            <li>• bank_master.csv</li>
+                            <li>• fee_table.csv</li>
+                            <li>• balance_snapshot.csv</li>
+                            <li>• cashflow_history.csv</li>
+                        </ul>
+                        <a href="{{ url_for('upload_files') }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-arrow-right me-1"></i>開始
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-success">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-cogs me-2"></i>
+                            ステップ 2
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">最適化実行</h6>
+                        <p class="card-text">パラメータ設定と最適化実行</p>
+                        <ul class="list-unstyled small">
+                            <li>• ホライズン期間</li>
+                            <li>• 安全在庫分位点</li>
+                            <li>• ペナルティ重み</li>
+                            <li>• Cut-off制約</li>
+                        </ul>
+                        <a href="{{ url_for('optimize_page') }}" class="btn btn-success btn-sm">
+                            <i class="fas fa-arrow-right me-1"></i>設定
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-info">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-chart-line me-2"></i>
+                            ステップ 3
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">結果確認</h6>
+                        <p class="card-text">最適化結果の表示・分析</p>
+                        <ul class="list-unstyled small">
+                            <li>• 資金移動計画</li>
+                            <li>• コスト比較</li>
+                            <li>• 実行時間</li>
+                            <li>• 安全在庫状況</li>
+                        </ul>
+                        <a href="{{ url_for('results_page') }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-arrow-right me-1"></i>確認
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card h-100 border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-download me-2"></i>
+                            ステップ 4
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-subtitle mb-2">エクスポート</h6>
+                        <p class="card-text">結果ファイルのダウンロード</p>
+                        <ul class="list-unstyled small">
+                            <li>• transfer_plan.csv</li>
+                            <li>• cost_comparison.png</li>
+                            <li>• KPI ログ</li>
+                        </ul>
+                        <button class="btn btn-warning btn-sm" disabled>
+                            <i class="fas fa-arrow-right me-1"></i>DL待機
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- System Status -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle me-2 text-info"></i>
+                    システム情報
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>機能要件</h6>
+                        <ul class="list-unstyled">
+                            <li>✅ CSV データロード</li>
+                            <li>✅ Safety Stock計算</li>
+                            <li>✅ MILP最適化エンジン</li>
+                            <li>✅ 手数料計算</li>
+                            <li>✅ Cut-off時刻制約</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>性能要件</h6>
+                        <ul class="list-unstyled">
+                            <li>⚡ 1,000行 < 30秒</li>
+                            <li>🛡️ 振込不能 0件</li>
+                            <li>💰 コスト削減 >10%</li>
+                            <li>📊 リアルタイム監視</li>
+                            <li>🔍 KPI自動ログ</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket me-2 text-success"></i>
+                    クイックスタート
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    サンプルデータで最適化を試すには：
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('upload_files') }}" class="btn btn-primary">
+                        <i class="fas fa-play me-2"></i>
+                        今すぐ開始
+                    </a>
+                    <a href="/interactive_notebook.ipynb" class="btn btn-outline-secondary">
+                        <i class="fas fa-book me-2"></i>
+                        Jupyter Notebook
+                    </a>
+                </div>
+                
+                <hr class="my-3">
+                
+                <h6 class="text-muted">サポート</h6>
+                <div class="small">
+                    <div class="mb-1">
+                        <i class="fas fa-file-alt me-1"></i>
+                        <a href="/docs/" class="text-decoration-none">ドキュメント</a>
+                    </div>
+                    <div class="mb-1">
+                        <i class="fas fa-bug me-1"></i>
+                        <a href="#" class="text-decoration-none">バグレポート</a>
+                    </div>
+                    <div>
+                        <i class="fas fa-question-circle me-1"></i>
+                        <a href="#" class="text-decoration-none">ヘルプ</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update current time
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('current-time').textContent = 
+            now.toLocaleString('ja-JP', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+    }
+    
+    updateTime();
+    setInterval(updateTime, 1000);
+});
+</script>
+{% endblock %}
