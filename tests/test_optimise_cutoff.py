@@ -12,8 +12,12 @@ class TestCutoffConstraint(unittest.TestCase):
         fee_lookup = {("A", "B", "G"): 0}
         cut_off = {("A", "G"): "14:00"}
 
+        branches = {"A": ["A1"], "B": ["B1"]}
+        fee_lookup = {("A", "A1", "B", "B1", "G"): 0}
+        
         result = build_model(
             banks=banks,
+            branches=branches,
             days=days,
             services=services,
             net_cash=net_cash,
@@ -25,8 +29,8 @@ class TestCutoffConstraint(unittest.TestCase):
         )
 
         transfers = result["transfers"]
-        self.assertEqual(transfers[("A", "B", "G", "D1")], 0)
-        self.assertGreaterEqual(transfers[("A", "B", "G", "D2")], 50)
+        self.assertEqual(transfers[("A", "A1", "B", "B1", "G", "D1")], 0)
+        self.assertGreaterEqual(transfers[("A", "A1", "B", "B1", "G", "D2")], 50)
 
 
 if __name__ == "__main__":

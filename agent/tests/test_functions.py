@@ -28,6 +28,7 @@ def test_calc_safety_all_inflows():
 def test_fee_calculator_bin_selection():
     df_fee = pd.DataFrame({
         "from_bank": ["A", "A"],
+        "from_branch": ["Y", "Y"],
         "service_id": ["S", "S"],
         "amount_bin": ["0-100", "100+"],
         "to_bank": ["B", "B"],
@@ -35,6 +36,6 @@ def test_fee_calculator_bin_selection():
         "fee": [10, 20],
     })
     calc = FeeCalculator(df_fee)
-    assert calc.get_fee("A", "S", 50, "B", "X") == 10
-    assert calc.get_fee("A", "S", 100, "B", "X") == 20
-    assert calc.get_fee("A", "S", 150, "B", "X") == 20
+    assert calc.get_fee("A", "Y", "S", 50, "B", "X") == 10
+    assert calc.get_fee("A", "Y", "S", 100, "B", "X") == 20
+    assert calc.get_fee("A", "Y", "S", 150, "B", "X") == 20
